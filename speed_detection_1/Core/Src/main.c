@@ -175,9 +175,6 @@ int main(void)
   {
     /* USER CODE END WHILE */
 
-	  Update_Hall_And_Commutate(); // ポーリング方式
-	  HAL_Delay(1);
-
     /* USER CODE BEGIN 3 */
   }
   /* USER CODE END 3 */
