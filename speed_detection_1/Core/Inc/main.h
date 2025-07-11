@@ -61,12 +61,6 @@ void Error_Handler(void);
 /* Private defines -----------------------------------------------------------*/
 #define B1_BLUE_USER_BUTTON_Pin GPIO_PIN_13
 #define B1_BLUE_USER_BUTTON_GPIO_Port GPIOC
-#define HALL_A_Pin GPIO_PIN_0
-#define HALL_A_GPIO_Port GPIOC
-#define HALL_B_Pin GPIO_PIN_1
-#define HALL_B_GPIO_Port GPIOC
-#define HALL_C_Pin GPIO_PIN_2
-#define HALL_C_GPIO_Port GPIOC
 #define T_VCP_RX_Pin GPIO_PIN_3
 #define T_VCP_RX_GPIO_Port GPIOA
 #define T_VCP_TX_Pin GPIO_PIN_4
