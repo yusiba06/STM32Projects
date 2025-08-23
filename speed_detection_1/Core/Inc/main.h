@@ -67,6 +67,12 @@ void Error_Handler(void);
 #define T_VCP_TX_GPIO_Port GPIOA
 #define USER_LED_Pin GPIO_PIN_5
 #define USER_LED_GPIO_Port GPIOA
+#define UL_Pin GPIO_PIN_13
+#define UL_GPIO_Port GPIOA
+#define VL_Pin GPIO_PIN_14
+#define VL_GPIO_Port GPIOA
+#define WL_Pin GPIO_PIN_15
+#define WL_GPIO_Port GPIOA
 
 /* USER CODE BEGIN Private defines */
 

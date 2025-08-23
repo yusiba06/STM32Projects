@@ -48,6 +48,7 @@
 ADC_HandleTypeDef hadc1;
 
 TIM_HandleTypeDef htim1;
+TIM_HandleTypeDef htim2;
 
 /* USER CODE BEGIN PV */
 
@@ -58,6 +59,7 @@ void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_TIM1_Init(void);
 static void MX_ADC1_Init(void);
+static void MX_TIM2_Init(void);
 /* USER CODE BEGIN PFP */
 
 // --- PWM出力開始 ---
@@ -74,7 +76,7 @@ void Start_PWM()
 uint16_t Get_Duty_From_ADC(void);
 
 // --- 6ステップ通電制御 ---
-void Set_Step(uint8_t hall_state, uint16_t duty)
+void Set_Step(uint8_t hall_state, uint16_t duty, uint16_t duty_lowside)
 {
   // 全ch出力OFF
   __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_1, 0);
@@ -84,34 +86,87 @@ void Set_Step(uint8_t hall_state, uint16_t duty)
   switch (hall_state)
   {
     case 0b101: // H1=1, H2=0, H3=1
-      __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_1, duty); // U+
-      __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_2, 0);    // V
-      __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_3, duty); // W-
+		__HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_1, duty);
+		__HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_2, 0);
+		__HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_3, 0);
+		HAL_GPIO_WritePin(UL_GPIO_Port, UL_Pin, GPIO_PIN_RESET);
+		HAL_GPIO_WritePin(VL_GPIO_Port, VL_Pin, GPIO_PIN_SET);
+		HAL_GPIO_WritePin(WL_GPIO_Port, WL_Pin, GPIO_PIN_RESET);
+		/*
+		__HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, 0);
+		__HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_2, duty_lowside);
+		__HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_3, 0);
+		*/
       break;
 
     case 0b100: // U+ W-
-      __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_1, duty);
-      __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_3, duty);
+		__HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_1, duty);
+		__HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_2, 0);
+		__HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_3, 0);
+		HAL_GPIO_WritePin(UL_GPIO_Port, UL_Pin, GPIO_PIN_RESET);
+		HAL_GPIO_WritePin(VL_GPIO_Port, VL_Pin, GPIO_PIN_RESET);
+		HAL_GPIO_WritePin(WL_GPIO_Port, WL_Pin, GPIO_PIN_SET);
+		/*
+		__HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, 0);
+		__HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_2, 0);
+		__HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_3, duty_lowside);
+		*/
       break;
 
     case 0b110: // V+ W-
-      __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_2, duty);
-      __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_3, duty);
+		__HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_1, 0);
+		__HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_2, duty);
+		__HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_3, 0);
+		HAL_GPIO_WritePin(UL_GPIO_Port, UL_Pin, GPIO_PIN_RESET);
+		HAL_GPIO_WritePin(VL_GPIO_Port, VL_Pin, GPIO_PIN_RESET);
+		HAL_GPIO_WritePin(WL_GPIO_Port, WL_Pin, GPIO_PIN_SET);
+		/*
+		__HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, 0);
+		__HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_2, 0);
+		__HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_3, duty_lowside);
+		*/
       break;
 
     case 0b010: // V+ U-
-      __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_2, duty);
-      __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_1, duty);
+		__HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_1, 0);
+		__HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_2, duty);
+		__HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_3, 0);
+		HAL_GPIO_WritePin(UL_GPIO_Port, UL_Pin, GPIO_PIN_SET);
+		HAL_GPIO_WritePin(VL_GPIO_Port, VL_Pin, GPIO_PIN_RESET);
+		HAL_GPIO_WritePin(WL_GPIO_Port, WL_Pin, GPIO_PIN_RESET);
+		/*
+		__HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, duty_lowside);
+		__HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_2, 0);
+		__HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_3, 0);
+		*/
       break;
 
     case 0b011: // W+ U-
-      __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_3, duty);
-      __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_1, duty);
+		__HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_1, 0);
+		__HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_2, 0);
+		__HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_3, duty);
+		HAL_GPIO_WritePin(UL_GPIO_Port, UL_Pin, GPIO_PIN_SET);
+		HAL_GPIO_WritePin(VL_GPIO_Port, VL_Pin, GPIO_PIN_RESET);
+		HAL_GPIO_WritePin(WL_GPIO_Port, WL_Pin, GPIO_PIN_RESET);
+		/*
+		__HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, duty_lowside);
+		__HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_2, 0);
+		__HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_3, 0);
+		*/
       break;
 
     case 0b001: // W+ V-
-      __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_3, duty);
-      __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_2, duty);
+		__HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_1, 0);
+		__HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_2, 0);
+		__HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_3, duty);
+		HAL_GPIO_WritePin(UL_GPIO_Port, UL_Pin, GPIO_PIN_RESET);
+		HAL_GPIO_WritePin(VL_GPIO_Port, VL_Pin, GPIO_PIN_SET);
+		HAL_GPIO_WritePin(WL_GPIO_Port, WL_Pin, GPIO_PIN_RESET);
+		/*
+		__HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, 0);
+		__HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_2, duty_lowside);
+		__HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_3, 0);
+		*/
       break;
 
     default:
@@ -125,7 +180,8 @@ void Update_Hall_And_Commutate()
 {
   uint8_t hall = (HALL_A_READ() << 2) | (HALL_B_READ() << 1) | (HALL_C_READ() << 0);
   uint16_t duty = Get_Duty_From_ADC();
-  Set_Step(hall, duty);
+  uint16_t duty_lowside = 1000;
+  Set_Step(hall, duty, duty_lowside);
 }
 
 /* USER CODE END PFP */
@@ -177,13 +233,15 @@ int main(void)
   MX_GPIO_Init();
   MX_TIM1_Init();
   MX_ADC1_Init();
+  MX_TIM2_Init();
   /* USER CODE BEGIN 2 */
 
   Start_PWM();
 
   uint8_t hall = (HALL_A_READ() << 2) | (HALL_B_READ() << 1) | (HALL_C_READ() << 0);
   uint16_t duty = Get_Duty_From_ADC();
-  Set_Step(hall, duty);
+  uint16_t duty_lowside = 1000;
+  Set_Step(hall, duty, duty_lowside);
 
   /* USER CODE END 2 */
 
@@ -397,6 +455,73 @@ static void MX_TIM1_Init(void)
 }
 
 /**
+  * @brief TIM2 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM2_Init(void)
+{
+
+  /* USER CODE BEGIN TIM2_Init 0 */
+
+  /* USER CODE END TIM2_Init 0 */
+
+  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+  TIM_OC_InitTypeDef sConfigOC = {0};
+
+  /* USER CODE BEGIN TIM2_Init 1 */
+
+  /* USER CODE END TIM2_Init 1 */
+  htim2.Instance = TIM2;
+  htim2.Init.Prescaler = 0;
+  htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim2.Init.Period = 3199;
+  htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+  if (HAL_TIM_ConfigClockSource(&htim2, &sClockSourceConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_TIM_PWM_Init(&htim2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim2, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sConfigOC.OCMode = TIM_OCMODE_PWM1;
+  sConfigOC.Pulse = 0;
+  sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
+  sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
+  if (HAL_TIM_PWM_ConfigChannel(&htim2, &sConfigOC, TIM_CHANNEL_1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_TIM_PWM_ConfigChannel(&htim2, &sConfigOC, TIM_CHANNEL_2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_TIM_PWM_ConfigChannel(&htim2, &sConfigOC, TIM_CHANNEL_3) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM2_Init 2 */
+
+  /* USER CODE END TIM2_Init 2 */
+  HAL_TIM_MspPostInit(&htim2);
+
+}
+
+/**
   * @brief GPIO Initialization Function
   * @param None
   * @retval None
@@ -414,7 +539,7 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOB_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(USER_LED_GPIO_Port, USER_LED_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOA, USER_LED_Pin|UL_Pin|VL_Pin|WL_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin : B1_BLUE_USER_BUTTON_Pin */
   GPIO_InitStruct.Pin = B1_BLUE_USER_BUTTON_Pin;
@@ -436,12 +561,12 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Alternate = GPIO_AF13_USART3;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : USER_LED_Pin */
-  GPIO_InitStruct.Pin = USER_LED_Pin;
+  /*Configure GPIO pins : USER_LED_Pin UL_Pin VL_Pin WL_Pin */
+  GPIO_InitStruct.Pin = USER_LED_Pin|UL_Pin|VL_Pin|WL_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(USER_LED_GPIO_Port, &GPIO_InitStruct);
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
   /* EXTI interrupt init*/
   HAL_NVIC_SetPriority(EXTI0_IRQn, 0, 0);
