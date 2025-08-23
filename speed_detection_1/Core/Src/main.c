@@ -74,6 +74,8 @@ void Start_PWM()
 }
 
 uint16_t Get_Duty_From_ADC(void);
+uint32_t last_hall_time = 0;
+uint8_t motor_running = 0;  // 0=停止, 1=回転中
 
 // --- 6ステップ通電制御 ---
 void Set_Step(uint8_t hall_state, uint16_t duty, uint16_t duty_lowside)
@@ -179,7 +181,7 @@ void Set_Step(uint8_t hall_state, uint16_t duty, uint16_t duty_lowside)
 void OpenLoop_Startup(uint16_t duty, uint16_t duty_lowside)
 {
     // ゆっくりと6ステップを順番に進める
-    for (int step = 0; step < 50; step++) {
+    for (int step = 0; step < 1; step++) {
         Set_Step(0b101, duty, duty_lowside);
         HAL_Delay(5);
         Set_Step(0b100, duty, duty_lowside);
@@ -257,13 +259,25 @@ int main(void)
   /* USER CODE BEGIN 2 */
 
   Start_PWM();
+  uint16_t adc_val = 0;
+  while (1)
+  {
+      adc_val = Get_Duty_From_ADC();
+      if (adc_val <= 200) {
+          break;  // 条件を満たしたらループを抜ける
+      }
+  }
+  while (1)
+    {
+        adc_val = Get_Duty_From_ADC();
+        if (adc_val >= 300) {
+            break;  // 条件を満たしたらループを抜ける
+        }
+    }
 
-  uint8_t hall = (HALL_A_READ() << 2) | (HALL_B_READ() << 1) | (HALL_C_READ() << 0);
-  uint16_t duty = Get_Duty_From_ADC();
-  uint16_t duty_lowside = 1000;
-  Set_Step(0b100, 3000, 3000);
-  HAL_Delay(100);
-  OpenLoop_Startup(3000,3000);
+  //Set_Step(0b100, 500, 1000);
+  //HAL_Delay(100);
+  OpenLoop_Startup(200,1000);
 
   /* USER CODE END 2 */
 
@@ -274,6 +288,20 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+	  uint16_t duty = Get_Duty_From_ADC();
+
+	  // --- 停止検出 ---
+	  if (HAL_GetTick() - last_hall_time > 300) { // 500ms以上変化なし → 停止判定
+		  motor_running = 0;
+	  }
+
+	  // --- 再始動条件 ---
+	  if (!motor_running && duty > 40) {         // 停止中かつ duty がしきい値超え
+		  OpenLoop_Startup(200, 1000);           // 任意の duty で再始動
+		  motor_running = 1;
+		  last_hall_time = HAL_GetTick();
+	  }
+	  HAL_Delay(10);
   }
   /* USER CODE END 3 */
 }
@@ -612,6 +640,8 @@ void HAL_GPIO_EXTI_Rising_Callback(uint16_t GPIO_Pin)
   if (GPIO_Pin == GPIO_PIN_0 || GPIO_Pin == GPIO_PIN_1 || GPIO_Pin == GPIO_PIN_2)
   {
     Update_Hall_And_Commutate();
+    last_hall_time = HAL_GetTick();
+    motor_running = 1;  // 回転中フラグON
   }
 }
 
@@ -620,6 +650,8 @@ void HAL_GPIO_EXTI_Falling_Callback(uint16_t GPIO_Pin)
   if (GPIO_Pin == GPIO_PIN_0 || GPIO_Pin == GPIO_PIN_1 || GPIO_Pin == GPIO_PIN_2)
   {
     Update_Hall_And_Commutate();
+    last_hall_time = HAL_GetTick();
+    motor_running = 1;  // 回転中フラグON
   }
 }
 
