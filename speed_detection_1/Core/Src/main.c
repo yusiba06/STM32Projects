@@ -175,6 +175,26 @@ void Set_Step(uint8_t hall_state, uint16_t duty, uint16_t duty_lowside)
   }
 }
 
+// --- 初期オープンループスタート ---
+void OpenLoop_Startup(uint16_t duty, uint16_t duty_lowside)
+{
+    // ゆっくりと6ステップを順番に進める
+    for (int step = 0; step < 50; step++) {
+        Set_Step(0b101, duty, duty_lowside);
+        HAL_Delay(5);
+        Set_Step(0b100, duty, duty_lowside);
+        HAL_Delay(5);
+        Set_Step(0b110, duty, duty_lowside);
+        HAL_Delay(5);
+        Set_Step(0b010, duty, duty_lowside);
+        HAL_Delay(5);
+        Set_Step(0b011, duty, duty_lowside);
+        HAL_Delay(5);
+        Set_Step(0b001, duty, duty_lowside);
+        HAL_Delay(5);
+    }
+}
+
 // --- ホールセンサ状態を読み取り、ステップ制御 ---
 void Update_Hall_And_Commutate()
 {
@@ -241,7 +261,9 @@ int main(void)
   uint8_t hall = (HALL_A_READ() << 2) | (HALL_B_READ() << 1) | (HALL_C_READ() << 0);
   uint16_t duty = Get_Duty_From_ADC();
   uint16_t duty_lowside = 1000;
-  Set_Step(hall, duty, duty_lowside);
+  Set_Step(0b100, 3000, 3000);
+  HAL_Delay(100);
+  OpenLoop_Startup(3000,3000);
 
   /* USER CODE END 2 */
 
