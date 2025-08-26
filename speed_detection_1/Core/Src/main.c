@@ -48,7 +48,6 @@
 ADC_HandleTypeDef hadc1;
 
 TIM_HandleTypeDef htim1;
-TIM_HandleTypeDef htim2;
 
 /* USER CODE BEGIN PV */
 
@@ -59,7 +58,6 @@ void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_TIM1_Init(void);
 static void MX_ADC1_Init(void);
-static void MX_TIM2_Init(void);
 /* USER CODE BEGIN PFP */
 
 // --- PWM出力開始 ---
@@ -78,7 +76,7 @@ uint32_t last_hall_time = 0;
 uint8_t motor_running = 0;  // 0=停止, 1=回転中
 
 // --- 6ステップ通電制御 ---
-void Set_Step(uint8_t hall_state, uint16_t duty, uint16_t duty_lowside)
+void Set_Step(uint8_t hall_state, uint16_t duty)
 {
   // 全ch出力OFF
   __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_1, 0);
@@ -94,11 +92,6 @@ void Set_Step(uint8_t hall_state, uint16_t duty, uint16_t duty_lowside)
 		HAL_GPIO_WritePin(UL_GPIO_Port, UL_Pin, GPIO_PIN_RESET);
 		HAL_GPIO_WritePin(VL_GPIO_Port, VL_Pin, GPIO_PIN_SET);
 		HAL_GPIO_WritePin(WL_GPIO_Port, WL_Pin, GPIO_PIN_RESET);
-		/*
-		__HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, 0);
-		__HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_2, duty_lowside);
-		__HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_3, 0);
-		*/
       break;
 
     case 0b100: // U+ W-
@@ -108,11 +101,6 @@ void Set_Step(uint8_t hall_state, uint16_t duty, uint16_t duty_lowside)
 		HAL_GPIO_WritePin(UL_GPIO_Port, UL_Pin, GPIO_PIN_RESET);
 		HAL_GPIO_WritePin(VL_GPIO_Port, VL_Pin, GPIO_PIN_RESET);
 		HAL_GPIO_WritePin(WL_GPIO_Port, WL_Pin, GPIO_PIN_SET);
-		/*
-		__HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, 0);
-		__HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_2, 0);
-		__HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_3, duty_lowside);
-		*/
       break;
 
     case 0b110: // V+ W-
@@ -122,11 +110,6 @@ void Set_Step(uint8_t hall_state, uint16_t duty, uint16_t duty_lowside)
 		HAL_GPIO_WritePin(UL_GPIO_Port, UL_Pin, GPIO_PIN_RESET);
 		HAL_GPIO_WritePin(VL_GPIO_Port, VL_Pin, GPIO_PIN_RESET);
 		HAL_GPIO_WritePin(WL_GPIO_Port, WL_Pin, GPIO_PIN_SET);
-		/*
-		__HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, 0);
-		__HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_2, 0);
-		__HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_3, duty_lowside);
-		*/
       break;
 
     case 0b010: // V+ U-
@@ -136,11 +119,6 @@ void Set_Step(uint8_t hall_state, uint16_t duty, uint16_t duty_lowside)
 		HAL_GPIO_WritePin(UL_GPIO_Port, UL_Pin, GPIO_PIN_SET);
 		HAL_GPIO_WritePin(VL_GPIO_Port, VL_Pin, GPIO_PIN_RESET);
 		HAL_GPIO_WritePin(WL_GPIO_Port, WL_Pin, GPIO_PIN_RESET);
-		/*
-		__HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, duty_lowside);
-		__HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_2, 0);
-		__HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_3, 0);
-		*/
       break;
 
     case 0b011: // W+ U-
@@ -150,11 +128,6 @@ void Set_Step(uint8_t hall_state, uint16_t duty, uint16_t duty_lowside)
 		HAL_GPIO_WritePin(UL_GPIO_Port, UL_Pin, GPIO_PIN_SET);
 		HAL_GPIO_WritePin(VL_GPIO_Port, VL_Pin, GPIO_PIN_RESET);
 		HAL_GPIO_WritePin(WL_GPIO_Port, WL_Pin, GPIO_PIN_RESET);
-		/*
-		__HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, duty_lowside);
-		__HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_2, 0);
-		__HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_3, 0);
-		*/
       break;
 
     case 0b001: // W+ V-
@@ -164,11 +137,6 @@ void Set_Step(uint8_t hall_state, uint16_t duty, uint16_t duty_lowside)
 		HAL_GPIO_WritePin(UL_GPIO_Port, UL_Pin, GPIO_PIN_RESET);
 		HAL_GPIO_WritePin(VL_GPIO_Port, VL_Pin, GPIO_PIN_SET);
 		HAL_GPIO_WritePin(WL_GPIO_Port, WL_Pin, GPIO_PIN_RESET);
-		/*
-		__HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, 0);
-		__HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_2, duty_lowside);
-		__HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_3, 0);
-		*/
       break;
 
     default:
@@ -178,21 +146,21 @@ void Set_Step(uint8_t hall_state, uint16_t duty, uint16_t duty_lowside)
 }
 
 // --- 初期オープンループスタート ---
-void OpenLoop_Startup(uint16_t duty, uint16_t duty_lowside)
+void OpenLoop_Startup(uint16_t duty)
 {
     // ゆっくりと6ステップを順番に進める
-    for (int step = 0; step < 1; step++) {
-        Set_Step(0b101, duty, duty_lowside);
+    for (int step = 0; step < 0; step++) {
+        Set_Step(0b101, duty);
         HAL_Delay(5);
-        Set_Step(0b100, duty, duty_lowside);
+        Set_Step(0b100, duty);
         HAL_Delay(5);
-        Set_Step(0b110, duty, duty_lowside);
+        Set_Step(0b110, duty);
         HAL_Delay(5);
-        Set_Step(0b010, duty, duty_lowside);
+        Set_Step(0b010, duty);
         HAL_Delay(5);
-        Set_Step(0b011, duty, duty_lowside);
+        Set_Step(0b011, duty);
         HAL_Delay(5);
-        Set_Step(0b001, duty, duty_lowside);
+        Set_Step(0b001, duty);
         HAL_Delay(5);
     }
 }
@@ -202,8 +170,7 @@ void Update_Hall_And_Commutate()
 {
   uint8_t hall = (HALL_A_READ() << 2) | (HALL_B_READ() << 1) | (HALL_C_READ() << 0);
   uint16_t duty = Get_Duty_From_ADC();
-  uint16_t duty_lowside = 1000;
-  Set_Step(hall, duty, duty_lowside);
+  Set_Step(hall, duty);
 }
 
 /* USER CODE END PFP */
@@ -255,7 +222,6 @@ int main(void)
   MX_GPIO_Init();
   MX_TIM1_Init();
   MX_ADC1_Init();
-  MX_TIM2_Init();
   /* USER CODE BEGIN 2 */
 
   Start_PWM();
@@ -275,9 +241,9 @@ int main(void)
         }
     }
 
-  //Set_Step(0b100, 500, 1000);
+  //Set_Step(0b100, 500);
   //HAL_Delay(100);
-  OpenLoop_Startup(200,1000);
+  OpenLoop_Startup(200);
 
   /* USER CODE END 2 */
 
@@ -291,13 +257,13 @@ int main(void)
 	  uint16_t duty = Get_Duty_From_ADC();
 
 	  // --- 停止検出 ---
-	  if (HAL_GetTick() - last_hall_time > 300) { // 500ms以上変化なし → 停止判定
+	  if (HAL_GetTick() - last_hall_time > 300) { // 300ms以上変化なし → 停止判定
 		  motor_running = 0;
 	  }
 
 	  // --- 再始動条件 ---
 	  if (!motor_running && duty > 40) {         // 停止中かつ duty がしきい値超え
-		  OpenLoop_Startup(200, 1000);           // 任意の duty で再始動
+		  OpenLoop_Startup(200);           // 任意の duty で再始動
 		  motor_running = 1;
 		  last_hall_time = HAL_GetTick();
 	  }
@@ -501,73 +467,6 @@ static void MX_TIM1_Init(void)
 
   /* USER CODE END TIM1_Init 2 */
   HAL_TIM_MspPostInit(&htim1);
-
-}
-
-/**
-  * @brief TIM2 Initialization Function
-  * @param None
-  * @retval None
-  */
-static void MX_TIM2_Init(void)
-{
-
-  /* USER CODE BEGIN TIM2_Init 0 */
-
-  /* USER CODE END TIM2_Init 0 */
-
-  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
-  TIM_MasterConfigTypeDef sMasterConfig = {0};
-  TIM_OC_InitTypeDef sConfigOC = {0};
-
-  /* USER CODE BEGIN TIM2_Init 1 */
-
-  /* USER CODE END TIM2_Init 1 */
-  htim2.Instance = TIM2;
-  htim2.Init.Prescaler = 0;
-  htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim2.Init.Period = 3199;
-  htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
-  htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
-  if (HAL_TIM_Base_Init(&htim2) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
-  if (HAL_TIM_ConfigClockSource(&htim2, &sClockSourceConfig) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  if (HAL_TIM_PWM_Init(&htim2) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
-  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
-  if (HAL_TIMEx_MasterConfigSynchronization(&htim2, &sMasterConfig) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  sConfigOC.OCMode = TIM_OCMODE_PWM1;
-  sConfigOC.Pulse = 0;
-  sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
-  sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
-  if (HAL_TIM_PWM_ConfigChannel(&htim2, &sConfigOC, TIM_CHANNEL_1) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  if (HAL_TIM_PWM_ConfigChannel(&htim2, &sConfigOC, TIM_CHANNEL_2) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  if (HAL_TIM_PWM_ConfigChannel(&htim2, &sConfigOC, TIM_CHANNEL_3) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /* USER CODE BEGIN TIM2_Init 2 */
-
-  /* USER CODE END TIM2_Init 2 */
-  HAL_TIM_MspPostInit(&htim2);
 
 }
 
