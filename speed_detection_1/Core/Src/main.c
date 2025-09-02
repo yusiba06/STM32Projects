@@ -48,6 +48,7 @@
 ADC_HandleTypeDef hadc1;
 
 TIM_HandleTypeDef htim1;
+TIM_HandleTypeDef htim2;
 
 /* USER CODE BEGIN PV */
 
@@ -58,8 +59,8 @@ void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_TIM1_Init(void);
 static void MX_ADC1_Init(void);
+static void MX_TIM2_Init(void);
 /* USER CODE BEGIN PFP */
-
 // --- PWM出力開始 ---
 void Start_PWM()
 {
@@ -149,7 +150,7 @@ void Set_Step(uint8_t hall_state, uint16_t duty)
 void OpenLoop_Startup(uint16_t duty)
 {
     // ゆっくりと6ステップを順番に進める
-    for (int step = 0; step < 0; step++) {
+    for (int step = 0; step < 1; step++) {
         Set_Step(0b101, duty);
         HAL_Delay(5);
         Set_Step(0b100, duty);
@@ -222,7 +223,9 @@ int main(void)
   MX_GPIO_Init();
   MX_TIM1_Init();
   MX_ADC1_Init();
+  MX_TIM2_Init();
   /* USER CODE BEGIN 2 */
+
 
   Start_PWM();
   uint16_t adc_val = 0;
@@ -241,9 +244,12 @@ int main(void)
         }
     }
 
-  //Set_Step(0b100, 500);
+  HAL_TIM_Base_Start_IT(&htim2);
+  Set_Step(0b101, 1000);
+  HAL_Delay(10);
+  Set_Step(0b100, 1000);
   //HAL_Delay(100);
-  OpenLoop_Startup(200);
+  //OpenLoop_Startup(100);
 
   /* USER CODE END 2 */
 
@@ -254,20 +260,25 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+	  /*
 	  uint16_t duty = Get_Duty_From_ADC();
 
 	  // --- 停止検出 ---
 	  if (HAL_GetTick() - last_hall_time > 300) { // 300ms以上変化なし → 停止判定
 		  motor_running = 0;
+		  // --- 再始動条件 ---
+		  if (!motor_running && duty > 200) {         // 停止中かつ duty がしきい値超え
+			  Set_Step(0b101, 1000);
+			  HAL_Delay(10);
+			  Set_Step(0b100, 1000);
+			  //OpenLoop_Startup(200);           // 任意の duty で再始動
+			  motor_running = 1;
+			  last_hall_time = HAL_GetTick();
+		  }
 	  }
+	  HAL_Delay(500);
+	  */
 
-	  // --- 再始動条件 ---
-	  if (!motor_running && duty > 40) {         // 停止中かつ duty がしきい値超え
-		  OpenLoop_Startup(200);           // 任意の duty で再始動
-		  motor_running = 1;
-		  last_hall_time = HAL_GetTick();
-	  }
-	  HAL_Delay(10);
   }
   /* USER CODE END 3 */
 }
@@ -471,6 +482,51 @@ static void MX_TIM1_Init(void)
 }
 
 /**
+  * @brief TIM2 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM2_Init(void)
+{
+
+  /* USER CODE BEGIN TIM2_Init 0 */
+
+  /* USER CODE END TIM2_Init 0 */
+
+  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+
+  /* USER CODE BEGIN TIM2_Init 1 */
+
+  /* USER CODE END TIM2_Init 1 */
+  htim2.Instance = TIM2;
+  htim2.Init.Prescaler = 64000-1;
+  htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim2.Init.Period = 99;
+  htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+  if (HAL_TIM_ConfigClockSource(&htim2, &sClockSourceConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim2, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM2_Init 2 */
+
+  /* USER CODE END TIM2_Init 2 */
+
+}
+
+/**
   * @brief GPIO Initialization Function
   * @param None
   * @retval None
@@ -533,6 +589,23 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
+{
+	if (HAL_GetTick() - last_hall_time > 300) { // 300ms以上変化なし → 停止判定
+		motor_running = 0;
+		uint16_t duty = Get_Duty_From_ADC();
+		HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, GPIO_PIN_SET);
+		// --- 再始動条件 ---
+		if (!motor_running && duty > 200) {         // 停止中かつ duty がしきい値超え
+		  Set_Step(0b101, 1000);
+		  //HAL_Delay(10);
+		  Set_Step(0b100, 1000);
+		  //OpenLoop_Startup(200);           // 任意の duty で再始動
+		  motor_running = 1;
+		  last_hall_time = HAL_GetTick();
+		}
+	}
+}
 
 void HAL_GPIO_EXTI_Rising_Callback(uint16_t GPIO_Pin)
 {
@@ -541,6 +614,7 @@ void HAL_GPIO_EXTI_Rising_Callback(uint16_t GPIO_Pin)
     Update_Hall_And_Commutate();
     last_hall_time = HAL_GetTick();
     motor_running = 1;  // 回転中フラグON
+    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, GPIO_PIN_RESET);
   }
 }
 
@@ -551,6 +625,7 @@ void HAL_GPIO_EXTI_Falling_Callback(uint16_t GPIO_Pin)
     Update_Hall_And_Commutate();
     last_hall_time = HAL_GetTick();
     motor_running = 1;  // 回転中フラグON
+    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, GPIO_PIN_RESET);
   }
 }
 
